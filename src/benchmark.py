@@ -92,14 +92,15 @@ def run(backend, months, seed=42):
         df = df[(df["payment_type"] == 1) & (df["fare_amount"] > 2.5) & (df["fare_amount"] < 250)
                 & (df["trip_distance"] > 0) & (df["trip_distance"] < 100)]
         df = df.dropna(subset=["passenger_count"])
-        dur = (df["tpep_dropoff_datetime"] - df["tpep_pickup_datetime"]).dt.total_seconds() / 60
+        delta = df["tpep_dropoff_datetime"] - df["tpep_pickup_datetime"]
+        dur = delta.dt.days * 1440 + delta.dt.seconds / 60
         df = df.assign(duration_min=dur)
         df = df[(df["duration_min"] > 1) & (df["duration_min"] < 180)]
 
     with t.stage("features"):
         df["speed_mph"] = df["trip_distance"] / (df["duration_min"] / 60)
         df["pickup_hour"] = df["tpep_pickup_datetime"].dt.hour
-        df["pickup_dow"] = df["tpep_pickup_datetime"].dt.weekday
+        df["pickup_dow"] = df["tpep_pickup_datetime"].dt.dayofweek
         df["is_weekend"] = (df["pickup_dow"] >= 5).astype("int8")
         df["label"] = (df["tip_amount"] >= 0.2 * df["fare_amount"]).astype("int8")
         # Group-by aggregates per pickup zone
