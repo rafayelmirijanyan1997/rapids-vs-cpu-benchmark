@@ -37,10 +37,16 @@ for i, b in enumerate(["cpu", "gpu"]):
     if not r:
         continue
     left = 0
-    for s in stages:
+
+    for j, s in enumerate(stages):
         v = r["stages_s"].get(s, 0)
-        ax.barh(i, v, left=left, label=s if i == 0 else None)
+        ax.barh(i, v, left=left, color=f"C{j}", label=s if i == 0 else None)
+
         left += v
+
+
+
+        
 ax.set_yticks([0, 1], ["CPU", "GPU"])
 ax.set_xlabel("seconds")
 ax.set_title(f"End-to-end pipeline, {rows:,} rows")
