@@ -1,40 +1,66 @@
-# CPU vs GPU: end-to-end analytics on NYC taxi data
+# Spam Classifier using Naïve Bayes
 
-The same data-science pipeline runs on two stacks, and every stage is timed:
+This Jupyter Notebook demonstrates a spam classifier using the Naïve Bayes algorithm. The classifier is trained on a dataset of SMS messages labeled as either "spam" or "ham" (non-spam).
 
-| Stage | CPU stack | GPU stack (NVIDIA RAPIDS) |
-|---|---|---|
-| Load parquet | pandas | cuDF |
-| Clean, feature engineering, group-by, joins | pandas | cuDF |
-| Train/test split, metrics | scikit-learn | cuML |
-| Model | XGBoost `device="cpu"` | XGBoost `device="cuda"` |
+## Table of Contents
+1. Introduction
+2. Dataset Exploration
+3. Feature Encoding
+4. Training and Testing the Classifier
+5. Predicting Unseen Data
+6. Conclusion
 
-**Task:** predict whether a card-paid yellow-cab trip gets a tip of at least 20% of the fare.
-**Data:** [NYC TLC trip records](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page), 2023, at 1, 3 and 6 months (TODO: fill in the row counts).
+## Introduction
+The dataset used is the SMSSpamCollection, containing SMS messages labeled as spam or ham.
 
-## Results
+## Dataset Exploration
+The dataset is loaded and analyzed, revealing an imbalance with more ham messages than spam messages.
 
-> TODO: paste `results/results.md` here after running. Report only numbers you measured.
+```python
+import numpy as np
+import pandas as pd
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 
-![stage times](results/stage_times.png)
-
-**Hardware:** TODO (for example Colab T4 16 GB vs 2-vCPU Xeon; get this from `runs.jsonl`).
-
-## Findings
-- TODO: which stages sped up most, and why (group-bys and joins are memory-bound and parallel).
-- TODO: whether ROC-AUC matched between backends (it should, within noise).
-- TODO: where the GPU did *not* help (small data, transfer overhead), and where GPU memory became the limit.
-
-## Reproduce
-```bash
-pip install -r requirements.txt           # CPU
-python src/benchmark.py --backend cpu --months 2023-01 2023-02 2023-03
-python src/report.py
+df = pd.read_csv('SMSSpamCollection', sep='\t', header=None)
+df.head()
 ```
-For the GPU backend, see [notebooks/run_on_colab.md](notebooks/run_on_colab.md) (free T4).
 
-## Related
-Part 1, writing the kernels by hand (naive CUDA, tiled shared-memory and cuBLAS matrix multiply): [Image-processing-kernels-with-CUDA-CPU-and-GPU-](https://github.com/rafayelmirijanyan1997/Image-processing-kernels-with-CUDA-CPU-and-GPU-)
+## Feature Encoding
+Messages are converted into feature vectors based on word presence.
 
-## Author
-Rafayel Mirijanyan
+```python
+def textParse(bigString):
+    import re
+    return [tok.lower() for tok in re.split(r'[^A-Za-z]+', bigString) if len(tok) > 2]
+
+def setOfWords2Vec(vocabList, inputSet):
+    return [1 if word in inputSet else 0 for word in vocabList]
+```
+
+## Training and Testing the Classifier
+A Multinomial Naïve Bayes classifier is trained and tested, achieving ~97.13% accuracy.
+
+```python
+X_train, X_test, Y_train, Y_test = train_test_split(instances, labels, test_size=0.25, random_state=24)
+
+clf = MultinomialNB()
+clf.fit(X_train, Y_train)
+
+prediction = clf.predict(X_test)
+accuracy_score(Y_test, prediction)
+```
+
+## Predicting Unseen Data
+Users can input a message to classify it as spam or ham.
+
+```python
+testset = input('Enter text message:')
+returnVec = setOfWords2Vec(vocabList, textParse(testset))
+testset = np.array(returnVec).reshape(1, -1)
+predict(testset)
+```
+
+## Conclusion
+The classifier effectively identifies spam messages with high accuracy. For full details, refer to the `spam_classifier.ipynb` notebook.
